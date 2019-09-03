@@ -135,7 +135,10 @@ class RaygunErrorMessage(object):
 
         frames = None
         try:
-            frames = inspect.getinnerframes(exc_traceback)
+            if type(exc_traceback) == list and type(exc_traceback[0]) == tuple and 'frame' in str(type(exc_traceback[0][0])).lower():
+                frames = exc_traceback
+            else:
+                frames = inspect.getinnerframes(exc_traceback)
 
             if frames:
                 for frame in frames:

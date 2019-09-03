@@ -240,6 +240,13 @@ Call this function from within a catch block to send the current exception to Ra
   # Send tags, custom data and an HTTP request object
   httpResult = client.send_exception(tags=[], userCustomData={}, request={})
 
+  # Send custom traceback
+  exception = ValueError("new error")
+  new_stack = inspect.stack()
+  # You can even modify the stack:
+  # new_stack = new_stack.append(...)
+  httpResult = client.send_exception(exc_info=[type(exception), exception, new_stack])
+
 You can pass in **either** of these two exception params:
 
 * :code:`exception` should be a subclass of type Exception. Pass this in if you want to manually transmit an exception object to Raygun.
