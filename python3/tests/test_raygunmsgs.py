@@ -1,5 +1,9 @@
-import sys, unittest, socket
+import sys
+import unittest
+import socket
 import inspect
+import mock
+
 from raygun4py import raygunmsgs
 
 class TestRaygunMessageBuilder(unittest.TestCase):
@@ -143,8 +147,9 @@ class TestRaygunErrorMessage(unittest.TestCase):
             self.parent()
         except Exception as e:
             self.theException = e
-
             exc_info = sys.exc_info()
+
+            self.assertTrue(inspect.istraceback(exc_info[2]))
             self.msg = raygunmsgs.RaygunErrorMessage(exc_info[0], exc_info[1], exc_info[2], { 'transmitLocalVariables': True })
 
     def parent(self):
@@ -200,6 +205,50 @@ class TestRaygunErrorMessage(unittest.TestCase):
         self.assertEqual(error_message.__dict__['stackTrace'][0]['methodName'], None)
 
         inspect.getinnerframes = original_getinnerframes
+
+    def test_inspect_traceback_parameter(self):
+        should_include_me_too = "i'm local"
+        exception = ValueError("Hey there")
+
+        msg = raygunmsgs.RaygunErrorMessage(type(exception), exception, inspect.stack(), { 'transmitLocalVariables': True })
+        localVars = msg.__dict__['stackTrace'][0]['localVariables']
+
+        self.assertTrue('exception' in localVars)
+        self.assertEqual(str(exception), localVars['exception'])
+        self.assertTrue('should_include_me_too' in localVars)
+        self.assertEqual(should_include_me_too, localVars['should_include_me_too'])
+
+    def test_inspect_traceback_argument_failure(self):
+        exception = ValueError("")
+        fake_traceback = ["not real <frames>", "<frame fake>"]
+
+        with self.assertRaises(raygunmsgs.DeveloperException):
+            raygunmsgs.RaygunErrorMessage(type(exception), exception, fake_traceback, {'transmitLocalVariables': True})
+
+    def test_it_raises_DeveloperException_on_incorrect_stack(self):
+
+        # Try to mimic the original frame class objects, to try and spoof the system. (inspect.isframe() should return False)
+        class frame(object):
+            def __init__(self):
+                pass
+
+        incorrect_stack = inspect.stack()
+        fake_frame_object = frame()
+        klass = getattr(inspect, 'FrameInfo', tuple)
+
+        if klass == tuple:
+            fake_frame_info = klass([fake_frame_object, None, "", None])
+        else:
+            fake_frame_info = klass(frame=fake_frame_object, filename='/tmp/specs/etc.py', lineno=666, function='<module>', code_context=None, index=None)
+
+        incorrect_stack.append(fake_frame_info)
+
+        with self.assertRaises(raygunmsgs.DeveloperException):
+            raygunmsgs.RaygunErrorMessage(type(ValueError("")), ValueError(""), incorrect_stack, {'transmitLocalVariables': True})
+
+        with self.assertRaises(raygunmsgs.DeveloperException):
+            raygunmsgs.RaygunErrorMessage(type(ValueError("")), ValueError(""), frame(), {'transmitLocalVariables': True})
+
 
 def getinnerframes_mock_methodname_none(exception):
     return [(

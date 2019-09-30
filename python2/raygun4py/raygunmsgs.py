@@ -15,6 +15,10 @@ from datetime import datetime
 from raygun4py import http_utilities
 
 
+class DeveloperException(Exception):
+    pass
+
+
 class RaygunMessageBuilder(object):
 
     def __init__(self, options):
@@ -128,6 +132,9 @@ class RaygunMessage(object):
 
 class RaygunErrorMessage(object):
 
+    INSPECT_STACK_BASE_TYPE = list
+    INSPECT_STACK_CLASS_SUBTYPE = tuple
+
     def __init__(self, exc_type, exc_value, exc_traceback, options):
         self.className = exc_type.__name__
         self.message = "%s: %s" % (exc_type.__name__, exc_value)
@@ -135,7 +142,7 @@ class RaygunErrorMessage(object):
 
         frames = None
         try:
-            frames = inspect.getinnerframes(exc_traceback)
+            frames = self._get_frames(exc_traceback)
 
             if frames:
                 for frame in frames:
@@ -172,6 +179,28 @@ class RaygunErrorMessage(object):
 
     def get_classname(self):
         return self.className
+
+    def _get_frames(self, exc_traceback):
+        if not exc_traceback or inspect.istraceback(exc_traceback):
+            return inspect.getinnerframes(exc_traceback)
+
+        if self._is_stack_frame_type(exc_traceback):
+            return exc_traceback
+
+        raise DeveloperException("Expected traceback type. Got '{}' instead.".format(type(exc_traceback)))
+
+    def _is_stack_frame_type(self, exc_traceback):
+        if type(exc_traceback) != self.INSPECT_STACK_BASE_TYPE:
+            return False
+
+        for frame in exc_traceback:
+            if type(frame) != self.INSPECT_STACK_CLASS_SUBTYPE:
+                return False
+            else:
+                if not inspect.isframe(frame[0]):
+                    raise DeveloperException("Expected frame type. Got '{}' instead.".format(type(frame[0])))
+
+        return True
 
     def _get_locals(self, frame):
         result = {}
