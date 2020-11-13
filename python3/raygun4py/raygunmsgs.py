@@ -133,7 +133,7 @@ class RaygunMessage(object):
 
 class RaygunErrorMessage(object):
 
-    MAX_LOCAL_VAR_LENGTH = 2048 # TODO: parametrize this as an option, like `transmit_environment_variables`.
+    MAX_LOCAL_VAR_LENGTH = 4096 # TODO: parametrize this as a config option, like `transmit_environment_variables`.
     INSPECT_STACK_BASE_TYPE = list
     INSPECT_STACK_CLASS_SUBTYPE = getattr(inspect, 'FrameInfo', tuple)
 
