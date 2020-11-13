@@ -133,6 +133,7 @@ class RaygunMessage(object):
 
 class RaygunErrorMessage(object):
 
+    MAX_LOCAL_VAR_LENGTH = 2048 # TODO: parametrize this as an option, like `transmit_environment_variables`.
     INSPECT_STACK_BASE_TYPE = list
     INSPECT_STACK_CLASS_SUBTYPE = getattr(inspect, 'FrameInfo', tuple)
 
@@ -223,10 +224,10 @@ class RaygunErrorMessage(object):
             for key in localVars:
                 try:
                     # Note that str() *can* fail; thus protect against it as much as we can.
-                    result[key] = str(localVars[key])[0:2048]
+                    result[key] = str(localVars[key])[0:MAX_LOCAL_VAR_LENGTH]
                 except Exception as e:
                     try:
-                        r = repr(localVars[key])[0:2048]
+                        r = repr(localVars[key])[0:MAX_LOCAL_VAR_LENGTH]
                     except Exception as re:
                         r = "Couldn't convert to repr due to {0}".format(re)
                     result[key] = "!!! Couldn't convert {0!r} (repr: {1}) due to {2!r} !!!".format(key, r, e)
